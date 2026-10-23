@@ -79,7 +79,7 @@ storage), so copy an export out over USB or with a file manager that can open `A
 | Voice-over input | cpal | none (the microphone permission's prompt needs JNI) |
 | Hardware decoding | `filmcraft-platform` (VideoToolbox, Media Foundation, VA-API, NVDEC) | none yet: software decoders |
 | File dialogs | `rfd`, on a thread on Linux | the host's own egui window (`browser.rs`) over the app, answering `HostHooks::run_dialog`; it offers Projects, Exports, Camera, Movies, Pictures, Downloads and Storage |
-| Controls | pointer-sized | an interface zoom chosen for the screen (1.25× on a 1280 × 800-point tablet) as long as the desktop layout still fits; the soft keyboard opens for text fields (winit) |
+| Controls | pointer-sized | an interface zoom chosen for the screen: larger (up to 1.25×) only while at least 1180 × 700 points remain, which the header needs; smaller (down to 0.8×) on a narrower screen so its parts don't overlap; the soft keyboard opens for text fields (winit) |
 | System bars | the window manager keeps the window clear of them | the status bar is hidden (`FULLSCREEN` window flag: devices that lay the window out edge to edge put the menu bar under the clock) and the screen stays on while FilmCraft is up; the usable area the activity reports (`content_rect`, e.g. above the soft keyboard) is what egui lays out in |
 | Logging | file + stderr (`logging.rs`) | logcat, tag `filmcraft` (`android_logger`) |
 | Menus, shortcuts | native menu bar (macOS), keyboard | the in-app menu bar; J/K/L and the other shortcuts work with a hardware keyboard |

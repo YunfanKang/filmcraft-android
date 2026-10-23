@@ -3,9 +3,14 @@
 
 use std::path::{Path, PathBuf};
 
-/// The smallest window the desktop layout is made for (`apps/filmcraft/src/main.rs`,
-/// `with_min_inner_size`), in points.
-pub const MIN_SIZE: [f32; 2] = [900.0, 560.0];
+/// The smallest window the desktop layout is comfortable in, in points: the header (workspace
+/// tabs, the menu bar, the title, Discord, the workspace switcher and the icons) needs about
+/// 1180 points before its parts run into each other, and the three-row dock about 700 points of
+/// height. (The desktop's minimum window, 900 × 560, lets the header overlap.)
+pub const COMFORTABLE_SIZE: [f32; 2] = [1180.0, 700.0];
+
+/// The least the interface is shrunk to on a screen narrower than [`COMFORTABLE_SIZE`].
+pub const MIN_ZOOM: f32 = 0.8;
 
 /// This install's folders. All in the app's own storage, which needs no permission.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -57,11 +62,17 @@ pub fn places(dirs: &Dirs) -> Vec<(String, PathBuf)> {
     v
 }
 
-/// The interface zoom for a screen of `width` × `height` points: bigger controls for fingers, as
-/// long as the desktop layout (`MIN_SIZE`) still fits.
+/// The interface zoom for a screen of `width` × `height` points: bigger controls for fingers as
+/// long as the desktop layout stays comfortable ([`COMFORTABLE_SIZE`]), and on a screen too narrow
+/// for it, smaller (down to [`MIN_ZOOM`]) so the header's parts don't overlap.
 pub fn tablet_zoom(width: f32, height: f32) -> f32 {
-    let [min_w, min_h] = MIN_SIZE;
-    [1.25, 1.1].into_iter().find(|z| width / z >= min_w && height / z >= min_h).unwrap_or(1.0)
+    let [min_w, min_h] = COMFORTABLE_SIZE;
+    let fits = |z: f32| width / z >= min_w && height / z >= min_h;
+    if let Some(z) = [1.25, 1.1, 1.0].into_iter().find(|z| fits(*z)) {
+        return z;
+    }
+    // (two decimals: a zoom the user can read in View ▸ Zoom)
+    ((width / min_w).min(height / min_h).clamp(MIN_ZOOM, 1.0) * 100.0).floor() / 100.0
 }
 
 #[cfg(test)]
@@ -104,10 +115,17 @@ mod tests {
     }
 
     #[test]
-    fn zoom_grows_controls_while_the_layout_fits() {
-        assert_eq!(tablet_zoom(1280.0, 800.0), 1.25, "a 10-inch tablet at 1.5× density");
-        assert_eq!(tablet_zoom(1024.0, 640.0), 1.1, "1.25 would drop under the minimum width");
-        assert_eq!(tablet_zoom(960.0, 600.0), 1.0, "barely the minimum: no zoom");
-        assert_eq!(tablet_zoom(800.0, 1280.0), 1.0, "portrait: the layout doesn't fit anyway");
+    fn zoom_grows_controls_only_while_the_header_stays_comfortable() {
+        assert_eq!(tablet_zoom(1280.0, 800.0), 1.0, "a 10-inch tablet at 1.5× density: 1.25 would squeeze the header to 1024 points");
+        assert_eq!(tablet_zoom(1600.0, 1000.0), 1.25, "a 13-inch tablet at 1.5× density");
+        assert_eq!(tablet_zoom(1340.0, 800.0), 1.1);
+    }
+
+    #[test]
+    fn a_narrow_screen_shrinks_the_interface_instead_of_overlapping() {
+        assert_eq!(tablet_zoom(1024.0, 640.0), 0.86, "1024 / 1180");
+        assert_eq!(tablet_zoom(1180.0, 600.0), 0.85, "the height decides: 600 / 700");
+        assert_eq!(tablet_zoom(640.0, 400.0), MIN_ZOOM, "never smaller than readable");
+        assert_eq!(tablet_zoom(800.0, 1280.0), MIN_ZOOM, "portrait: the layout doesn't fit anyway");
     }
 }
