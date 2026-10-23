@@ -3,11 +3,11 @@
 
 use std::path::{Path, PathBuf};
 
-/// The smallest window the desktop layout is comfortable in, in points: the header (workspace
-/// tabs, the menu bar, the title, Discord, the workspace switcher and the icons) needs about
-/// 1180 points before its parts run into each other, and the three-row dock about 700 points of
-/// height. (The desktop's minimum window, 900 × 560, lets the header overlap.)
-pub const COMFORTABLE_SIZE: [f32; 2] = [1180.0, 700.0];
+/// The smallest window the layout is comfortable in, in points, with the header's menu bar
+/// folded into one button (`FilmcraftApp::compact_menu`): below about 1100 points of width the
+/// timeline's track headers and the panel tabs get clipped, and the three-row dock wants about
+/// 680 points of height. (The desktop's minimum window, 900 × 560, lets things overlap.)
+pub const COMFORTABLE_SIZE: [f32; 2] = [1100.0, 680.0];
 
 /// The least the interface is shrunk to on a screen narrower than [`COMFORTABLE_SIZE`].
 pub const MIN_ZOOM: f32 = 0.8;
@@ -115,16 +115,16 @@ mod tests {
     }
 
     #[test]
-    fn zoom_grows_controls_only_while_the_header_stays_comfortable() {
-        assert_eq!(tablet_zoom(1280.0, 800.0), 1.0, "a 10-inch tablet at 1.5× density: 1.25 would squeeze the header to 1024 points");
+    fn zoom_grows_controls_only_while_the_layout_stays_comfortable() {
+        assert_eq!(tablet_zoom(1280.0, 800.0), 1.1, "a 10-inch tablet at 1.5× density: 1.25 would clip the timeline at 1024 points");
         assert_eq!(tablet_zoom(1600.0, 1000.0), 1.25, "a 13-inch tablet at 1.5× density");
-        assert_eq!(tablet_zoom(1340.0, 800.0), 1.1);
+        assert_eq!(tablet_zoom(1100.0, 680.0), 1.0, "exactly comfortable: no zoom");
     }
 
     #[test]
     fn a_narrow_screen_shrinks_the_interface_instead_of_overlapping() {
-        assert_eq!(tablet_zoom(1024.0, 640.0), 0.86, "1024 / 1180");
-        assert_eq!(tablet_zoom(1180.0, 600.0), 0.85, "the height decides: 600 / 700");
+        assert_eq!(tablet_zoom(1024.0, 640.0), 0.93, "1024 / 1100");
+        assert_eq!(tablet_zoom(1100.0, 600.0), 0.88, "the height decides: 600 / 680");
         assert_eq!(tablet_zoom(640.0, 400.0), MIN_ZOOM, "never smaller than readable");
         assert_eq!(tablet_zoom(800.0, 1280.0), MIN_ZOOM, "portrait: the layout doesn't fit anyway");
     }

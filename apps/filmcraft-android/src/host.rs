@@ -110,6 +110,8 @@ impl Host {
         if let Some(rs) = cc.wgpu_render_state.clone() {
             app.set_wgpu(rs);
         }
+        // one ☰ button instead of the menu bar: the header's width goes to the controls
+        app.compact_menu = true;
         // Settings ▸ Audio Hardware is applied on the first frame, as on the desktop
         app.audio = Some(Box::new(filmcraft_audio_cpal::CpalOut::new()));
         let requests: Requests = Rc::new(RefCell::new(VecDeque::new()));

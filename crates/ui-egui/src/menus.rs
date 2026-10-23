@@ -926,6 +926,37 @@ pub fn menu_bar(app: &mut FilmcraftApp, ui: &mut egui::Ui) {
     }
 }
 
+/// One ☰ button in place of the bar, for a tablet: the bar's 520 points are what the header
+/// lacks there, and a popup's rows are finger-sized where the bar's titles are not. Its menu lists
+/// the top-level menus as submenus, each with the bar's contents; the automation ids stay
+/// `menu.<top>` (while open), and the button is `header.menu`.
+pub fn compact_menu(app: &mut FilmcraftApp, ui: &mut egui::Ui) -> egui::Response {
+    ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new("interface-language"), app.ui.language));
+    let items = menu_items(app);
+    let labels = app.session.prefs.labels.clone();
+    let ctx = ui.ctx().clone();
+    let mut clicked: Option<String> = None;
+    let config = egui::containers::menu::MenuConfig::new().style(crate::theme::menu_style);
+    let (response, _) = egui::containers::menu::MenuButton::new("☰").config(config).ui(ui, |ui| {
+        ui.set_min_width(220.0);
+        for top in MENUS {
+            let mine: Vec<&MenuItem> = items.iter().filter(|i| i.path.first().map(String::as_str) == Some(top)).collect();
+            let r = ui.menu_button(app.ui.language.tr(top), |ui| {
+                ui.set_min_width(260.0);
+                if mine.is_empty() {
+                    ui.add_enabled(false, egui::Button::new(tl!("(empty)")));
+                }
+                menu_level(ui, &mine, 1, &mut clicked, &mut app.auto, &labels);
+            });
+            app.auto.add(&format!("menu.{top}"), r.response.rect, top);
+        }
+    });
+    if let Some(id) = clicked {
+        let _ = invoke(app, &ctx, &id, json!({}));
+    }
+    response
+}
+
 /// Like a native menu bar (Windows, macOS): while one top-level menu is open, hovering another
 /// top-level title opens that menu instead (#1500). egui's `MenuBar` only switches on click.
 fn switch_on_hover(ctx: &egui::Context, titles: &[egui::Response]) {

@@ -360,6 +360,9 @@ pub struct FilmcraftApp {
     pub quit_confirmed: bool,
     fonts_ready: bool,
     pub integrated_titlebar: bool,
+    /// The host wants one ☰ button in the header instead of the menu bar (a tablet:
+    /// [`menus::compact_menu`]). Not saved: it follows the device, not the user.
+    pub compact_menu: bool,
     pub last_timeline_width: f32,
     /// The sequence whose view `ui.timeline` holds, and that view as it was last exchanged with
     /// `session.state.timeline_views` (see `sync_timeline_view`).
@@ -595,6 +598,7 @@ impl FilmcraftApp {
             quit_confirmed: false,
             fonts_ready: false,
             integrated_titlebar: false,
+            compact_menu: false,
             last_timeline_width: 1000.0,
             timeline_view_of: None,
             pending_timeline_drop: None,
