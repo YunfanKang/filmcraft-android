@@ -16,8 +16,13 @@
 //!   lists, against a reference list (default: the local `plan/premiere/<area>.json`), presence and
 //!   placement reported separately (`parity.rs`, docs/gaps.md G7).
 //! - `ico <out.ico> <in.png>…`: pack PNGs into a Windows `.ico` (used by `packaging/icons.sh`).
-//! - `ci`: fmt check, clippy -D warnings, tests, layers, assets, wasm.
+//! - `android`: `cargo check --target aarch64-linux-android` for the Android app
+//!   (`apps/filmcraft-android`); no NDK needed, nothing is linked.
+//! - `apk [--dev] [--install]`: build the Android app and package it as a debug-signed APK in
+//!   `<target>/android/` with the Android SDK's tools (`ANDROID_HOME`, an NDK; docs/android.md).
+//! - `ci`: fmt check, clippy -D warnings, tests, layers, assets, wasm, android.
 
+mod apk;
 mod ico;
 mod parity;
 mod version;
@@ -83,10 +88,12 @@ const LAYERS: &[(&str, u8)] = &[
     ("engine", 4),
     ("platform", 5),
     ("ui-egui", 5),
+    ("audio-cpal", 5),
     ("automation", 5),
     ("filmcraft", 6),
     ("cli", 6),
     ("web", 6),
+    ("android", 6),
 ];
 
 /// L0 crates that are not codecs/containers (no `bitstream`-only restriction).
@@ -105,6 +112,7 @@ const SAME_LAYER: &[(&str, &str)] = &[
     ("scopes", "gpu"),
     ("gpu", "render"),
     ("cli", "filmcraft"),
+    ("audio-cpal", "ui-egui"),
     ("tts", "tts-text"),
 ];
 
@@ -273,6 +281,31 @@ fn wasm() -> Result<(), String> {
     run(&mut cmd)?;
     println!("wasm: ok ({n} crates)");
     Ok(())
+}
+
+/// The Rust target of the Android app (64-bit ARM, every phone and tablet since 2019 and the only
+/// ABI Google Play accepts on its own).
+const ANDROID_TARGET: &str = "aarch64-linux-android";
+
+/// `cargo check` of the Android host and everything under it. A check needs no NDK: nothing is
+/// linked, only compiled, so it catches `cfg(target_os)` gaps and non-portable dependencies on any
+/// machine (the APK build itself is `apk`).
+fn android() -> Result<(), String> {
+    if !target_installed(ANDROID_TARGET) {
+        return Err(format!("the `{ANDROID_TARGET}` standard library is not installed; run `rustup target add {ANDROID_TARGET}`"));
+    }
+    run(Command::new(env!("CARGO")).args(["check", "--target", ANDROID_TARGET, "-p", "filmcraft-android", "--lib"]))?;
+    println!("android: ok");
+    Ok(())
+}
+
+/// Whether rustup has `target`'s standard library (`rustup target list --installed`). Without
+/// rustup (a distribution toolchain), the check is left to cargo.
+fn target_installed(target: &str) -> bool {
+    match Command::new("rustup").args(["target", "list", "--installed"]).output() {
+        Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout).lines().any(|l| l.trim() == target),
+        _ => true,
+    }
 }
 
 /// The wasm-bindgen CLI must match the `wasm-bindgen` crate version exactly.
@@ -460,7 +493,8 @@ fn ci() -> Result<(), String> {
     run(Command::new(cargo).args(["test", "--workspace", "--release"]))?;
     layers()?;
     assets()?;
-    wasm()
+    wasm()?;
+    android()
 }
 
 /// The headless playback benchmark (`crates/ui-egui/examples/bench_playback.rs`); extra
@@ -488,6 +522,8 @@ fn main() -> ExitCode {
     let r = match task.as_str() {
         "layers" => layers(),
         "wasm" => wasm(),
+        "android" => android(),
+        "apk" => apk::run_cmd(&std::env::args().skip(2).collect::<Vec<_>>().iter().map(String::as_str).collect::<Vec<_>>()),
         "assets" => assets(),
         "fixtures" => fixtures(&std::env::args().skip(2).collect::<Vec<_>>()),
         "ci" => ci(),
@@ -507,7 +543,7 @@ fn main() -> ExitCode {
             ico::run(&rest.iter().map(String::as_str).collect::<Vec<_>>())
         }
         _ => Err(
-            "usage: cargo xtask <layers|assets|wasm|web [--dev] [--serve PORT]|fixtures [crate…]|parity [--area menus|effects|transitions] [--reference FILE] [--out FILE] [--min PERCENT]|ico OUT IN…|version [set X.Y.Z]|ci|bench [args]|bench-playback [args]>"
+            "usage: cargo xtask <layers|assets|wasm|android|apk [--dev] [--install]|web [--dev] [--serve PORT]|fixtures [crate…]|parity [--area menus|effects|transitions] [--reference FILE] [--out FILE] [--min PERCENT]|ico OUT IN…|version [set X.Y.Z]|ci|bench [args]|bench-playback [args]>"
                 .into(),
         ),
     };

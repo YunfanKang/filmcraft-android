@@ -27,7 +27,6 @@ filmcraft-export = { workspace = true }
 filmcraft-gpu = { workspace = true }
 filmcraft-scopes = { workspace = true }
 egui = { workspace = true }
-eframe = { workspace = true, features = ["default_fonts", "wgpu", "accesskit"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
@@ -44,6 +43,15 @@ rustix = { version = "1", default-features = false, features = ["std", "time"] }
 # the same clocks on Windows (GetThreadTimes / GetProcessTimes behind a safe API; MIT OR Apache-2.0)
 [target.'cfg(windows)'.dependencies]
 cpu-time = "1"
+
+# eframe's `accesskit` (the platform adapters) is for the desktop: it needs the GameActivity backend
+# on Android, which compiles C++, so the Android host builds without it. egui's own `accesskit`
+# (the node roles the dock sets) is always on in egui 0.36.
+[target.'cfg(not(target_os = "android"))'.dependencies]
+eframe = { workspace = true, features = ["default_fonts", "wgpu", "accesskit"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+eframe = { workspace = true, features = ["default_fonts", "wgpu"] }
 
 [dev-dependencies]
 pollster = "0.4"

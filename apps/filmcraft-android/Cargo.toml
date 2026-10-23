@@ -1,0 +1,48 @@
+[package]
+name = "filmcraft-android"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "FilmCraft on Android tablets: the egui UI in a NativeActivity (check with `cargo xtask android`, package with `cargo xtask apk`; docs/android.md)"
+
+# The workspace lints, except that `unsafe_code` is `deny` instead of `forbid`: the activity's entry
+# point must be exported under its own name (`#[unsafe(no_mangle)] fn android_main`, which the lint
+# counts), and it is allowed on that one item alone. There is no `unsafe` block in this crate.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+needless_range_loop = "allow"
+type_complexity = "allow"
+
+[lib]
+# `cdylib`: the shared object the Android activity loads (`libfilmcraft_android.so`); `rlib` so the
+# host-side unit tests build on every platform.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+filmcraft-engine = { workspace = true }
+filmcraft-ui-egui = { workspace = true }
+filmcraft-audio-cpal = { workspace = true }
+filmcraft-export = { workspace = true }
+filmcraft-gpu = { workspace = true }
+filmcraft-project = { workspace = true }
+filmcraft-render = { workspace = true }
+filmcraft-time = { workspace = true }
+egui = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["clock"] }
+log = { workspace = true }
+
+# The window: eframe on winit's NativeActivity backend (pure Rust; the GameActivity backend compiles
+# C++ from the Android Games SDK, so it is out). AccessKit has no NativeActivity adapter, so the
+# `accesskit` feature stays off here (eframe rejects the combination).
+[target.'cfg(target_os = "android")'.dependencies]
+eframe = { workspace = true, features = ["default_fonts", "wgpu", "android-native-activity"] }
+# the same winit eframe uses, for the `AndroidApp` handle the activity passes to `android_main`
+winit = { version = "0.30", default-features = false, features = ["android-native-activity"] }
+android_logger = { version = "0.15", default-features = false }

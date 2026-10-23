@@ -26,7 +26,6 @@
 mod app_nap;
 mod appearance;
 mod args;
-mod audio;
 mod audio_in;
 mod control_server;
 #[cfg(target_os = "linux")]
@@ -260,7 +259,7 @@ fn app_creator(launch: Launch, graphics: graphics::GraphicsStart, created: Arc<A
         }
         // Keep device selection available even when the default device is unavailable.
         // Settings ▸ Audio Hardware is applied on the first frame (`apply_prefs`).
-        app.audio = Some(Box::new(audio::CpalOut::new()));
+        app.audio = Some(Box::new(filmcraft_audio_cpal::CpalOut::new()));
         app.hooks.pick_files = Some(Box::new(|exts: &[&str]| {
             rfd::FileDialog::new()
                 .add_filter(filmcraft_ui_egui::i18n::t("Media"), &file_filters::extensions(exts))

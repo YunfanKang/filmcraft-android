@@ -22,8 +22,8 @@ Design principles:
 ## 1. Layers
 
 ```text
- L6  apps/filmcraft · apps/filmcraft-cli · apps/filmcraft-web
- L5  ui-egui · automation · platform
+ L6  apps/filmcraft · apps/filmcraft-cli · apps/filmcraft-web · apps/filmcraft-android
+ L5  ui-egui · automation · platform · audio-cpal
  L4  engine
  L3  render · gpu · export · golden (test-only)
  L2  edit · codecs · interchange · captions · speech · tts · tts-text
@@ -79,9 +79,11 @@ and `filmcraft-cli`.
 | `ui-egui` | L5 | the egui frontend: docking, panels, timeline, monitors, playback, control-channel handlers |
 | `automation` | L5 | MCP server (`rmcp`, stdio), headless or bridged to the running app |
 | `platform` | L5 | OS media FFI only: hardware video decoding (VideoToolbox H.264 / HEVC on macOS; Media Foundation / Direct3D 11 H.264 / HEVC / VP9 / AV1 on Windows; VA-API H.264 / HEVC on Linux, with our own parsers and DPBs driving the stateless hardware; a no-op elsewhere) behind `codecs::VideoDecoder`, with transparent fallback to our decoders, and hardware H.264 encoding (VideoToolbox, opt-in) and H.265 encoding (VideoToolbox, the only H.265 encoder; the format exists only where a hardware encoder does) and NVIDIA NVENC H.264 (Windows and 64-bit Linux, opt-in) and H.265 (Windows, FilmCraft's only H.265 encoder there) encoding behind `export::VideoEncoder`; H.264 declines to the built-in encoder for what the hardware does not take. The one crate allowed `unsafe` ([ADR 0001](adr/0001-platform-ffi.md), [README](../crates/platform/README.md)) |
+| `audio-cpal` | L5 | audio output through cpal behind `ui-egui`'s `AudioOut` (the playback master clock): ALSA, CoreAudio, WASAPI on the desktop, AAudio on Android |
 | `filmcraft` | L6 | desktop binary: eframe/wgpu window, cpal audio output, file dialogs, native macOS menu, TCP control server |
 | `filmcraft-cli` | L6 | headless CLI: `exec`, `run`, `inspect`, `describe`, `commands`, `import`, `export`, `render`, `probe`, `mcp`; `--bridge` targets the running app |
 | `filmcraft-web` | L6 | the browser app (wasm32): eframe web runner on WebGPU/WebGL2, Blob-backed services, OPFS recovery, WebAudio, WebCodecs, `window.filmcraft` API ([web.md](web.md)) |
+| `filmcraft-android` | L6 | the Android tablet app (`aarch64-linux-android`, a `NativeActivity`): eframe/wgpu on Vulkan, cpal/AAudio, an in-app file browser for the dialogs, auto-save in the app's storage; `cargo xtask apk` packages it ([android.md](android.md)) |
 
 ### What `cargo xtask layers` enforces
 

@@ -1,0 +1,42 @@
+# The Android host (apps/filmcraft-android) compiles for aarch64-linux-android. A check links
+# nothing, so no NDK is installed here; see docs/android.md.
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/filmcraft-android/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "xtask/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "apps/filmcraft-android/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "xtask/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust (stable + aarch64-linux-android)
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-linux-android
+          rustup default stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo xtask android

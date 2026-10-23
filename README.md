@@ -249,6 +249,7 @@ The trailer and the grades in these screenshots were built exactly this way, by 
 
 - **Native** on macOS, Windows and Linux, with a native macOS menu bar.
 - **The web:** the same engine and UI run in the browser via WebAssembly (`apps/filmcraft-web`, see [docs/web.md](docs/web.md)); every release ships it as `filmcraft-web-<version>.zip`.
+- **Android tablets:** the same engine and UI in a `NativeActivity` (`apps/filmcraft-android`, see [docs/android.md](docs/android.md)); `cargo xtask apk` builds the APK.
 - **Swappable UI.** The interface is one crate (`ui-egui`) over the engine, so a different front end can replace it without touching editing logic.
 
 <br>
@@ -321,7 +322,7 @@ A layered Cargo workspace:
 | Front ends | `ui-egui`, `automation` (MCP), `apps/filmcraft`, `apps/filmcraft-cli` |
 | Test support | `testkit` (ffmpeg oracles, fixtures), `golden` (golden-image tests) |
 
-Nothing below the front ends depends on a UI toolkit or OS API. `cargo xtask ci` checks formatting, lints, tests, the layering rules, asset attribution and the wasm build.
+Nothing below the front ends depends on a UI toolkit or OS API. `cargo xtask ci` checks formatting, lints, tests, the layering rules, asset attribution, the wasm build and the Android build (`docs/android.md`: `cargo xtask apk` packages the tablet app).
 
 ## Downloads
 

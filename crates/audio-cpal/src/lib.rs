@@ -5,6 +5,10 @@
 //! cpal reports as `poll() returned POLLERR`; an unplugged device) is restarted by
 //! [`AudioOut::recover`], keeping the played-frame clock and the play-ahead mixer, so sound
 //! resumes where it stopped instead of playback going silent (#840).
+//!
+//! Shared by the desktop app and the Android host (`apps/filmcraft-android`): cpal's Android
+//! backend is AAudio through the `ndk` crate, pure Rust like the others.
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable))]
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -126,6 +130,12 @@ fn output_device(h: &cpal::Host, name: &str, cache: &Mutex<Option<(String, Strin
     log::warn!("the default audio output device cannot be opened; falling back to '{found}'");
     *cache = Some((host_name, found.clone()));
     Some(DeviceChoice { device: d, fallback: Some(Note::Fallback(found)) })
+}
+
+impl Default for CpalOut {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CpalOut {
