@@ -50,9 +50,13 @@ goes in stripped (`llvm-strip`; the symbols stay in `target/` for a logcat trace
 Java of our own. `CRAFT_FONTS_DIR` works as for every other build.
 
 **First run on the device.** The app opens on the demo project. To import your own footage, allow
-*Photos and videos* (older Android: *Files and media*) for FilmCraft in Android Settings ▸ Apps ▸
-FilmCraft ▸ Permissions: the host declares the permission but can't show the prompt yet (that
-needs JNI, below). Then File ▸ Import browses Camera (DCIM), Movies, Pictures and Download.
+*Photos and videos* and *Music and audio* (older Android: *Files and media*) for FilmCraft in
+Android Settings ▸ Apps ▸ FilmCraft ▸ Permissions: the host declares the permissions but can't show
+the prompt yet (that needs JNI, below). Then File ▸ Import browses Camera (DCIM), Movies, Pictures
+and Download. Without the permission Android still lists those folders but hides every file in
+them (it doesn't refuse the folder), so the browser shows an empty Camera folder with a hint
+saying so. "Allow limited access" (Android 14's selected photos) counts as no permission here:
+only the files picked in the system sheet are visible, and that sheet needs JNI too.
 
 ## Where things are on the device
 

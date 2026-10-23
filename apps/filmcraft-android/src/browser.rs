@@ -94,6 +94,17 @@ pub fn list(dir: &Path, exts: &[String], files: bool) -> Result<Vec<Entry>, Stri
     Ok(dirs)
 }
 
+/// Why a shared-storage folder shows its subfolders but none of its files: Android (11 and later)
+/// lists a folder to an app without the media permission, but hides every file in it that the
+/// app didn't create itself, instead of refusing the folder. Shown when `dir` is under `shared`
+/// and the listing found no file.
+pub fn hidden_files_hint(dir: &Path, shared: Option<&Path>, entries: &[Entry]) -> Option<String> {
+    let under_shared = shared.is_some_and(|s| dir.starts_with(s));
+    (under_shared && !entries.iter().any(|e| !e.is_dir)).then(|| {
+        "No files here? Android hides videos, photos and music from FilmCraft until it has the Photos and videos (and Music and audio) permission: Android Settings ▸ Apps ▸ FilmCraft ▸ Permissions, then come back.".to_string()
+    })
+}
+
 /// Why `dir` can't be listed, with what to do about it.
 pub fn read_error(dir: &Path, e: &std::io::Error) -> String {
     if e.kind() == std::io::ErrorKind::PermissionDenied {
@@ -115,6 +126,8 @@ pub struct Browser {
     /// [`Kind::Save`]: the file name.
     file_name: String,
     places: Vec<(String, PathBuf)>,
+    /// Shared storage, where Android hides files from an app without the media permission.
+    shared: Option<PathBuf>,
 }
 
 /// How the dialog ended.
@@ -127,10 +140,10 @@ pub enum Done {
 impl Browser {
     /// A dialog for `request`, opened at `start` (the last folder used, or a place) unless the
     /// request names a folder.
-    pub fn open(request: Request, start: PathBuf, places: Vec<(String, PathBuf)>) -> Browser {
+    pub fn open(request: Request, start: PathBuf, places: Vec<(String, PathBuf)>, shared: Option<PathBuf>) -> Browser {
         let start = request.start.clone().filter(|p| p.is_dir()).unwrap_or(start);
         let file_name = request.file_name.clone();
-        let mut b = Browser { request, dir: PathBuf::new(), entries: Ok(Vec::new()), selected: BTreeSet::new(), file_name, places };
+        let mut b = Browser { request, dir: PathBuf::new(), entries: Ok(Vec::new()), selected: BTreeSet::new(), file_name, places, shared };
         b.go(start);
         b
     }
@@ -199,6 +212,11 @@ impl Browser {
                     Ok(entries) => {
                         if entries.is_empty() {
                             ui.weak(t("Nothing here"));
+                        }
+                        if self.request.kind != Kind::Folder
+                            && let Some(hint) = hidden_files_hint(&self.dir, self.shared.as_deref(), entries)
+                        {
+                            ui.colored_label(ui.visuals().warn_fg_color, t(&hint));
                         }
                         let mut go = None;
                         for e in entries.clone() {
@@ -329,9 +347,21 @@ mod tests {
     }
 
     #[test]
+    fn a_shared_folder_without_files_explains_the_missing_permission() {
+        let shared = Path::new("/storage/emulated/0");
+        let folder = |name: &str| Entry { name: name.into(), path: shared.join("DCIM").join(name), is_dir: true };
+        let file = |name: &str| Entry { name: name.into(), path: shared.join("DCIM/Camera").join(name), is_dir: false };
+        let hint = hidden_files_hint(&shared.join("DCIM"), Some(shared), &[folder("Camera")]);
+        assert!(hint.is_some_and(|h| h.contains("Photos and videos")), "subfolders but no files: Android is hiding them");
+        assert_eq!(hidden_files_hint(&shared.join("DCIM/Camera"), Some(shared), &[file("VID_0001.mp4")]), None, "files are shown: no hint");
+        assert_eq!(hidden_files_hint(Path::new("/data/user/0/pkg/files/Projects"), Some(shared), &[]), None, "the app's own folder: nothing is hidden there");
+        assert_eq!(hidden_files_hint(&shared.join("DCIM"), None, &[]), None, "no shared storage known");
+    }
+
+    #[test]
     fn a_save_gets_the_dialogs_extension_when_none_was_typed() {
         let dir = temp("save");
-        let mut b = Browser::open(Request::from_dialog(FileDialog::SaveProject { name: "Cut 1".into() }), dir.clone(), Vec::new());
+        let mut b = Browser::open(Request::from_dialog(FileDialog::SaveProject { name: "Cut 1".into() }), dir.clone(), Vec::new(), None);
         assert_eq!(b.save_name(), "Cut 1.fcproj");
         b.file_name = "cut.FCPROJ".into();
         assert_eq!(b.save_name(), "cut.FCPROJ", "a typed extension stays");
