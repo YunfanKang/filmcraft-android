@@ -19,12 +19,17 @@ panic path, and fix a crash before building on top of it. The cross-app standard
    fallback that is truly correct (never one that silently corrupts a project). An unfinished feature
    returns an "unsupported" error. The only exception is a call that is provably infallible from local
    code alone (a literal that always parses): a single-item `#[allow(clippy::expect_used)]` with the reason.
-3. **No `unsafe`** (`unsafe_code = "forbid"` for the workspace). The single exception is
+3. **No `unsafe`** (`unsafe_code = "forbid"` for the workspace). The exceptions are
    `crates/platform`, which needs `unsafe` to call the operating system's media APIs (hardware
-   video decoding through VideoToolbox, Media Foundation / Direct3D 11, VA-API and NVDEC; hardware encoding) and does nothing else. It
+   video decoding through VideoToolbox, Media Foundation / Direct3D 11, VA-API and NVDEC; hardware encoding) and does nothing else, and
+   `crates/android-perms`, which calls Android's runtime-permission Java methods through JNI (two
+   blocks that wrap the JavaVM and activity pointers the activity hands out). Each
    uses `unsafe_code = "deny"` with `#[allow(unsafe_code)]` only on its FFI modules, a
    `// SAFETY:` comment on every `unsafe` block, a safe `Result`-returning public API, and the
-   pure-Rust decoder as the tested fallback ([ADR 0001](docs/adr/0001-platform-ffi.md)).
+   pure-Rust decoder as the tested fallback ([ADR 0001](docs/adr/0001-platform-ffi.md)). One
+   attribute, not a block, is also allowed: `apps/filmcraft-android` exports its entry point as
+   `#[unsafe(no_mangle)] fn android_main` (the symbol `android-activity` resolves), so that crate
+   root is `deny` with `#[allow(unsafe_code)]` on that item alone.
 4. **Every input-derived number is hostile.** Media files, project and interchange files, presets, fonts,
    CLI / MCP / control-channel parameters and UI state are untrusted. Index and slice with `get()` (or
    validate bounds once, up front, for a hot loop); slice strings only at char boundaries; use

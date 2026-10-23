@@ -1,0 +1,29 @@
+[package]
+name = "filmcraft-android-perms"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "FilmCraft on Android (L5): runtime permissions through JNI, the one thing the NDK has no C API for"
+
+# The workspace lints, except that `unsafe_code` is `deny` instead of `forbid`: only the JNI module
+# opts in with `#[allow(unsafe_code)]`, and every `unsafe` block carries a `// SAFETY:` comment
+# (AGENTS.md §0, as crates/platform).
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+needless_range_loop = "allow"
+type_complexity = "allow"
+
+[dependencies]
+log = { workspace = true }
+
+[target.'cfg(target_os = "android")'.dependencies]
+# the activity handle winit passes to `android_main` (the same crate, so the same version)
+android-activity = { version = "0.6", features = ["native-activity"] }
+# pure-Rust JNI bindings (jni-sys declarations only; the JVM is the device's)
+jni = "0.21"

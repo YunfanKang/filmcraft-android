@@ -17,6 +17,20 @@ use winit::platform::android::activity::{AndroidApp, WindowManagerFlags};
 use crate::browser::{Browser, Done, Request};
 use crate::dirs::{self, Dirs};
 
+/// Ask Android for the media permissions when they are missing: the system's dialog (once per
+/// install, or until the user says "don't ask again"; after that only the app's settings page).
+fn request_media_permissions(app: &AndroidApp) {
+    let perms = filmcraft_android_perms::media_permissions(AndroidApp::sdk_version());
+    match filmcraft_android_perms::granted(app, perms) {
+        Ok(true) => log::info!("media permissions granted"),
+        Ok(false) => match filmcraft_android_perms::request(app, perms) {
+            Ok(()) => log::info!("asked for {perms:?}"),
+            Err(e) => log::warn!("asking for {perms:?}: {e}"),
+        },
+        Err(e) => log::warn!("checking {perms:?}: {e}"),
+    }
+}
+
 /// File dialogs the UI asked for, answered by the browser window one at a time.
 type Requests = Rc<RefCell<VecDeque<(Request, Sender<Vec<String>>)>>>;
 
@@ -109,6 +123,8 @@ impl Host {
         }));
         let places = dirs::places(&dirs);
         let last_dir = dirs.projects.clone();
+        // the system's permission dialog over the window, at the first start
+        request_media_permissions(&android);
         Host { app, android, requests, browser: None, places, shared: dirs.shared.clone(), last_dir, zoomed: false }
     }
 }
@@ -145,6 +161,11 @@ impl eframe::App for Host {
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         eframe::App::ui(&mut self.app, ui, frame);
+        if let Some((browser, _)) = self.browser.as_mut()
+            && browser.take_allow()
+        {
+            request_media_permissions(&self.android);
+        }
         if let Some((browser, _)) = self.browser.as_mut()
             && let Some(done) = browser.show(ui.ctx())
         {

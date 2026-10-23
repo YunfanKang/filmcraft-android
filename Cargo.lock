@@ -1764,6 +1764,7 @@ dependencies = [
  "chrono",
  "eframe",
  "egui",
+ "filmcraft-android-perms",
  "filmcraft-audio-cpal",
  "filmcraft-engine",
  "filmcraft-export",
@@ -1775,6 +1776,15 @@ dependencies = [
  "log",
  "serde_json",
  "winit",
+]
+
+[[package]]
+name = "filmcraft-android-perms"
+version = "0.12.0"
+dependencies = [
+ "android-activity",
+ "jni 0.21.1",
+ "log",
 ]
 
 [[package]]

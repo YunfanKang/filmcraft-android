@@ -49,14 +49,16 @@ and `libaaudio`), then the SDK's own `aapt2`, `aapt`, `zipalign` and `apksigner`
 goes in stripped (`llvm-strip`; the symbols stay in `target/` for a logcat trace). No Gradle, no
 Java of our own. `CRAFT_FONTS_DIR` works as for every other build.
 
-**First run on the device.** The app opens on the demo project. To import your own footage, allow
-*Photos and videos* and *Music and audio* (older Android: *Files and media*) for FilmCraft in
-Android Settings ▸ Apps ▸ FilmCraft ▸ Permissions: the host declares the permissions but can't show
-the prompt yet (that needs JNI, below). Then File ▸ Import browses Camera (DCIM), Movies, Pictures
-and Download. Without the permission Android still lists those folders but hides every file in
-them (it doesn't refuse the folder), so the browser shows an empty Camera folder with a hint
-saying so. "Allow limited access" (Android 14's selected photos) counts as no permission here:
-only the files picked in the system sheet are visible, and that sheet needs JNI too.
+**First run on the device.** The app opens on the demo project and Android's permission dialog
+asks for *Photos and videos* and *Music and audio* (older Android: *Files and media*), through
+`crates/android-perms` (JNI). Allow them, then File ▸ Import browses Camera (DCIM), Movies,
+Pictures and Download. Without the permission Android still lists those folders but hides every
+file in them (it doesn't refuse the folder), so the browser shows an empty Camera folder with a
+hint and an *Allow Access…* button that asks again, and lists the folder again every second until
+the files appear. A permission refused with "don't ask again" shows no dialog any more: Android
+Settings ▸ Apps ▸ FilmCraft ▸ Permissions is the way then. "Allow limited access" (Android 14's
+selected photos) counts as no permission here: only the files picked in the system sheet are
+visible, and that sheet is not wired up.
 
 ## Where things are on the device
 
@@ -98,12 +100,10 @@ What has to land before the tablet build is comfortable, roughly in order:
    behind the same `codecs::VideoDecoder` with transparent fallback. Needs a device to test on.
 2. **Memory.** Decoders, the frame cache and the GPU compositor sized for a desktop; measure on a
    device before raising defaults, and expect to lower the play-ahead.
-3. **The permission prompt, the share sheet and system-bar insets** need JNI
-   (`Activity.requestPermissions`, `ACTION_SEND`, MediaStore inserts so exports show in Gallery,
-   `WindowInsets` so the status bar can stay visible with the interface laid out below it). The
-   `jni` crate is pure Rust, but calling into the JVM takes `unsafe`, so it goes into
-   `crates/platform` (`// SAFETY:` on every block) and needs a device: a wrong signature aborts
-   the JVM.
+3. **The share sheet and system-bar insets** need more JNI (`ACTION_SEND`, MediaStore inserts so
+   exports show in Gallery, `WindowInsets` so the status bar can stay visible with the interface
+   laid out below it), next to the permission calls in `crates/android-perms`. Each needs a
+   device: a wrong signature is a Java exception, caught, but the feature then does nothing.
 4. **A compact layout for phones.** The UI assumes 900 × 560 points with panels, timeline and
    menu bar; a phone in portrait is about 400 points wide.
 5. **Release packaging**: a release signing key, `release.yml`, a Play listing.

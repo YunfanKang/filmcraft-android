@@ -5,6 +5,7 @@
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use filmcraft_ui_egui::i18n::t;
 use filmcraft_ui_egui::native_dialogs::FileDialog;
@@ -101,7 +102,7 @@ pub fn list(dir: &Path, exts: &[String], files: bool) -> Result<Vec<Entry>, Stri
 pub fn hidden_files_hint(dir: &Path, shared: Option<&Path>, entries: &[Entry]) -> Option<String> {
     let under_shared = shared.is_some_and(|s| dir.starts_with(s));
     (under_shared && !entries.iter().any(|e| !e.is_dir)).then(|| {
-        "No files here? Android hides videos, photos and music from FilmCraft until it has the Photos and videos (and Music and audio) permission: Android Settings ▸ Apps ▸ FilmCraft ▸ Permissions, then come back.".to_string()
+        "No files here? Android hides videos, photos and music from FilmCraft until it has the Photos and videos (and Music and audio) permission. Allow Access… asks for it; if no dialog appears, allow it in Android Settings ▸ Apps ▸ FilmCraft ▸ Permissions.".to_string()
     })
 }
 
@@ -128,7 +129,15 @@ pub struct Browser {
     places: Vec<(String, PathBuf)>,
     /// Shared storage, where Android hides files from an app without the media permission.
     shared: Option<PathBuf>,
+    /// When the folder was listed: while the permission hint shows, it is listed again every
+    /// second, so the files appear as soon as the permission is granted.
+    listed: Instant,
+    /// The user tapped Allow Access: the host asks Android for the permission.
+    allow: bool,
 }
+
+/// How often a folder with hidden files is listed again.
+const RELIST_EVERY: Duration = Duration::from_secs(1);
 
 /// How the dialog ended.
 pub enum Done {
@@ -143,7 +152,17 @@ impl Browser {
     pub fn open(request: Request, start: PathBuf, places: Vec<(String, PathBuf)>, shared: Option<PathBuf>) -> Browser {
         let start = request.start.clone().filter(|p| p.is_dir()).unwrap_or(start);
         let file_name = request.file_name.clone();
-        let mut b = Browser { request, dir: PathBuf::new(), entries: Ok(Vec::new()), selected: BTreeSet::new(), file_name, places, shared };
+        let mut b = Browser {
+            request,
+            dir: PathBuf::new(),
+            entries: Ok(Vec::new()),
+            selected: BTreeSet::new(),
+            file_name,
+            places,
+            shared,
+            listed: Instant::now(),
+            allow: false,
+        };
         b.go(start);
         b
     }
@@ -157,6 +176,20 @@ impl Browser {
         self.entries = list(&dir, &self.request.exts, self.request.kind != Kind::Folder);
         self.dir = dir;
         self.selected.clear();
+        self.listed = Instant::now();
+    }
+
+    /// The user asked for the media permission (once per tap).
+    pub fn take_allow(&mut self) -> bool {
+        std::mem::take(&mut self.allow)
+    }
+
+    /// The hint under a shared folder whose files Android hides, if that is what is shown.
+    fn hint(&self) -> Option<String> {
+        match &self.entries {
+            Ok(entries) if self.request.kind != Kind::Folder => hidden_files_hint(&self.dir, self.shared.as_deref(), entries),
+            _ => None,
+        }
     }
 
     fn chosen(&self) -> Vec<String> {
@@ -174,6 +207,14 @@ impl Browser {
 
     /// Draw the dialog; `Some` when it closed.
     pub fn show(&mut self, ctx: &egui::Context) -> Option<Done> {
+        if self.hint().is_some() {
+            // (the permission may have been granted in the system dialog meanwhile)
+            if self.listed.elapsed() >= RELIST_EVERY {
+                self.go(self.dir.clone());
+            }
+            ctx.request_repaint_after(RELIST_EVERY);
+        }
+        let hint = self.hint();
         let mut done = None;
         let mut open = true;
         let screen = ctx.content_rect();
@@ -213,10 +254,11 @@ impl Browser {
                         if entries.is_empty() {
                             ui.weak(t("Nothing here"));
                         }
-                        if self.request.kind != Kind::Folder
-                            && let Some(hint) = hidden_files_hint(&self.dir, self.shared.as_deref(), entries)
-                        {
-                            ui.colored_label(ui.visuals().warn_fg_color, t(&hint));
+                        if let Some(hint) = &hint {
+                            ui.colored_label(ui.visuals().warn_fg_color, t(hint));
+                            if ui.button(t("Allow Access…")).clicked() {
+                                self.allow = true;
+                            }
                         }
                         let mut go = None;
                         for e in entries.clone() {

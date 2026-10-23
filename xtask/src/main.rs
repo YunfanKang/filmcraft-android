@@ -89,6 +89,7 @@ const LAYERS: &[(&str, u8)] = &[
     ("platform", 5),
     ("ui-egui", 5),
     ("audio-cpal", 5),
+    ("android-perms", 5),
     ("automation", 5),
     ("filmcraft", 6),
     ("cli", 6),

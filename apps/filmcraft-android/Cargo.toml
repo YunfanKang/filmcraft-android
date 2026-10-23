@@ -28,6 +28,7 @@ crate-type = ["cdylib", "rlib"]
 filmcraft-engine = { workspace = true }
 filmcraft-ui-egui = { workspace = true }
 filmcraft-audio-cpal = { workspace = true }
+filmcraft-android-perms = { workspace = true }
 filmcraft-export = { workspace = true }
 filmcraft-gpu = { workspace = true }
 filmcraft-project = { workspace = true }
